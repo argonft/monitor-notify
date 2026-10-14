@@ -30,9 +30,16 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check src tests
       - run: pytest -p no:warnings --cov=monitor_notify --cov-report=term-missing --cov-fail-under=80
+      # Yasaklı adlar repoda değil, secret'ta durur (secret değerleri loglarda maskelenir).
       - name: Retailer adı denetimi
+        env:
+          FORBIDDEN_NAMES: ${{ secrets.FORBIDDEN_NAMES }}
         run: |
-          if grep -rniE "wunder|a101" src tests; then
+          if [ -z "$FORBIDDEN_NAMES" ]; then
+            echo "FORBIDDEN_NAMES tanımlı değil; denetim atlandı."
+            exit 0
+          fi
+          if grep -rliE "$FORBIDDEN_NAMES" src tests; then
             echo "Public repoda retailer adı geçmemeli." && exit 1
           fi
       - name: Wheel migration dosyalarını içeriyor
