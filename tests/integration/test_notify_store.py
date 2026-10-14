@@ -112,3 +112,13 @@ async def test_yalnizca_bilinmeyen_event_turu_olan_kural_hicbir_seyi_kapsamaz(po
     rule = (await store.list_rules())[0]
 
     assert not any(rule.covers(kind) for kind in EventKind)
+
+
+async def test_bilinmeyen_kural_turu_atlanir_digerleri_okunur(pool, store):
+    """Bozuk tek bir kural tüm kural listesini (ve dolayısıyla kuyruğu) durdurmamalı."""
+    await pool.execute("INSERT INTO watch_rules (kind, pattern) VALUES ('future_kind', 'x')")
+    good = await store.add_rule(RuleKind.BRAND, "Nike")
+
+    rules = await store.list_rules()
+
+    assert [rule.id for rule in rules] == [good]

@@ -56,19 +56,53 @@ async def register_targets(store: TargetStore, config: NotifyConfig) -> None:
         logger.info("Duyuru kanalı hedefi kayıtlı: %s", config.channel_id)
 
 
+#: Bu kadar ardışık başarısız turdan sonra admin'e bir kez haber verilir
+#: (2 sn aralıkla ~1 dakika). Kalıcı bir hata kuyruğu sessizce durdurmamalı.
+STUCK_THRESHOLD = 30
+
+StuckHandler = Callable[[Exception], Awaitable[None]]
+
+
+def stuck_alert(error: Exception, *, failures: int) -> str:
+    """Admin'e giden teşhis; hata mesajı değil yalnızca türü yazılır."""
+    return (
+        f"⚠️ Bildirim kuyruğu {failures} turdur işlenemiyor ({type(error).__name__}).\n\n"
+        "Bildirimler kaybolmadı, kuyrukta bekliyor. Ayrıntı için servis loglarına bak; "
+        "sorun düzelince gönderim kendiliğinden devam eder."
+    )
+
+
 async def run_outbox_loop(
     dispatcher: Dispatcher,
     interval: float,
     *,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    on_stuck: StuckHandler | None = None,
+    stuck_threshold: int = STUCK_THRESHOLD,
 ) -> None:
-    """Kuyruğu sürekli boşaltır; tek bir turun hatası döngüyü durdurmaz."""
+    """Kuyruğu sürekli boşaltır; tek bir turun hatası döngüyü durdurmaz.
+
+    Hata kalıcıysa (aynı bozuk kayıt her turda patlıyorsa) ``on_stuck`` eşik
+    aşılınca bir kez çağrılır; başarılı bir turdan sonra sayaç sıfırlanır.
+    """
+    failures = 0
     while True:
         try:
             await dispatcher.run_once()
-        except Exception:  # noqa: BLE001 - bildirim hatası servisi düşürmemeli
-            logger.exception("Bildirim turu başarısız.")
+            failures = 0
+        except Exception as error:  # noqa: BLE001 - bildirim hatası servisi düşürmemeli
+            failures += 1
+            logger.exception("Bildirim turu başarısız (%d. ardışık).", failures)
+            if on_stuck is not None and failures == stuck_threshold:
+                await _notify_stuck(on_stuck, error)
         await sleep(interval)
+
+
+async def _notify_stuck(on_stuck: StuckHandler, error: Exception) -> None:
+    try:
+        await on_stuck(error)
+    except Exception:  # noqa: BLE001 - uyarı gönderilemese de döngü sürmeli
+        logger.exception("Takılan kuyruk uyarısı gönderilemedi.")
 
 
 class NotifyApp:
@@ -103,19 +137,28 @@ class NotifyApp:
             allowed_chat_ids=self.store.list_admin_chats,
             proxy_url=self._config.proxy_url,
         )
+        notifier = TelegramNotifier(application.bot, limiter=RateLimiter())
         dispatcher = OutboxDispatcher(
             source=self._source,
             store=self.store,
-            notifier=TelegramNotifier(application.bot, limiter=RateLimiter()),
+            notifier=notifier,
             profile=self._profile,
             max_per_cycle=self._config.max_per_cycle,
         )
+
+        async def alert_admins(error: Exception) -> None:
+            text = stuck_alert(error, failures=STUCK_THRESHOLD)
+            for chat_id in await self.store.list_admin_chats():
+                await notifier.send(chat_id, text)
 
         await application.initialize()
         await application.start()
         await application.updater.start_polling(drop_pending_updates=True)
         task = asyncio.create_task(
-            run_outbox_loop(dispatcher, self._config.poll_interval_seconds), name="notifier"
+            run_outbox_loop(
+                dispatcher, self._config.poll_interval_seconds, on_stuck=alert_admins
+            ),
+            name="notifier",
         )
         try:
             yield self

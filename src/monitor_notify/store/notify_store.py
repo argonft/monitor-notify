@@ -43,7 +43,8 @@ class NotifyStore:
             query += " WHERE is_active = true"
         query += " ORDER BY id"
         rows = await self._pool.fetch(query)
-        return tuple(_to_rule(row) for row in rows)
+        rules = (_to_rule(row) for row in rows)
+        return tuple(rule for rule in rules if rule is not None)
 
     async def add_rule(
         self,
@@ -148,9 +149,14 @@ class NotifyStore:
 
 
 _KNOWN_KINDS = frozenset(str(kind) for kind in EventKind)
+_KNOWN_RULE_KINDS = frozenset(str(kind) for kind in RuleKind)
 
 
-def _to_rule(row: asyncpg.Record) -> Rule:
+def _to_rule(row: asyncpg.Record) -> Rule | None:
+    """Türü bilinmeyen kural atlanır (örn. daha yeni bir sürümden geri dönüldüyse)."""
+    if row["kind"] not in _KNOWN_RULE_KINDS:
+        logger.warning("Kural #%s bilinmeyen türde (%s), atlandı.", row["id"], row["kind"])
+        return None
     return Rule(
         id=row["id"],
         kind=RuleKind(row["kind"]),

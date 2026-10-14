@@ -8,3 +8,5 @@ Sürüm `1.0`'a kadar `0.x` sürümlerinde bozucu değişiklikler **BOZUCU** eti
   outbox, kurallar, Telegram gönderimi (görsel + düz metin fallback),
   ortak yönetim komutları, ek komutlar, çok kaynaklı migration,
   `check_event_source_contract`.
+- Kuyruk üst üste 30 tur işlenemezse admin'e tek seferlik teşhis gönderilir.
+- Türü bilinmeyen kural (`watch_rules.kind`) uyarıyla atlanır; kuyruğu durdurmaz.
