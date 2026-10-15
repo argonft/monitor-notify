@@ -146,15 +146,20 @@ class OutboxDispatcher:
 
     # --- iç adımlar -------------------------------------------------------
 
-    @staticmethod
     def _split_by_rules(
-        queue: Sequence[Notification], rules: tuple[Rule, ...]
+        self, queue: Sequence[Notification], rules: tuple[Rule, ...]
     ) -> tuple[list[Notification], list[int]]:
         """Kurallara göre gönderilecekleri ve elenecekleri ayırır."""
         allowed: list[Notification] = []
         suppressed: list[int] = []
         for item in queue:
-            if matches(item.kind, ProductContext.of(item), rules).allowed:
+            decision = matches(
+                item.kind,
+                ProductContext.of(item),
+                rules,
+                allow_without_rules=self._profile.notify_without_rules,
+            )
+            if decision.allowed:
                 allowed.append(item)
             else:
                 suppressed.append(item.id)

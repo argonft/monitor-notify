@@ -6,10 +6,11 @@ from .formatting.money import format_money
 from .model import EventKind, Notification
 from .ports import EventSource
 from .profile import RetailerProfile
+from .rules.normalize import contains
 from .store.migrate import NOTIFY_MIGRATIONS, MigrationSource, MigrationsMissingError, migrate
 from .store.notify_store import NotifyStore
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "EventKind",
@@ -25,4 +26,5 @@ __all__ = [
     "migrate",
     "format_money",
     "NotifyStore",
+    "contains",
 ]

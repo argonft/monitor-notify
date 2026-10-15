@@ -10,7 +10,7 @@ yalnızca kodu paylaşır.
 ## Kurulum
 
 ```
-monitor-notify @ git+https://github.com/argonft/monitor-notify@v0.1.0
+monitor-notify @ git+https://github.com/argonft/monitor-notify@v0.2.0
 ```
 
 Geliştirirken: `pip install -e ../notify`
@@ -21,6 +21,8 @@ Retailer üç şey sağlar:
 
 1. **`EventSource`** — bekleyen bildirimleri `Notification` olarak döner, gönderilenleri işaretler.
 2. **`RetailerProfile`** — mağaza adı, varyant ismi ("Beden", "Gramaj"), acil olay türleri, buton metni.
+   Kullanıcının ürünleri tek tek takibe aldığı bir retailer'da `notify_without_rules=True`
+   ver: hiç `/watch` kuralı yokken de bildirimler gider (varsayılan: kural yoksa gönderilmez).
 3. **Migration kaynağı** — kendi şeması; kütüphanenin tabloları `NOTIFY_MIGRATIONS` ile gelir.
 
 ```python

@@ -165,3 +165,11 @@ def test_bildirimden_urun_baglami_kurulur():
         categories=("Sneaker",), variant_label="42", product_url="https://shop.example/a",
     )
     assert ProductContext.of(notification) == ProductContext("Air Max", "Nike", ("Sneaker",))
+
+
+def test_kural_yokken_varsayilan_karar_verilebilir():
+    from monitor_notify.rules.matcher import ProductContext, matches
+
+    product = ProductContext(name="Air Max", brand="Nike", categories=())
+    assert matches(EventKind.RESTOCK, product, ()).allowed is False
+    assert matches(EventKind.RESTOCK, product, (), allow_without_rules=True).allowed is True

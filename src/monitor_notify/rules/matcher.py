@@ -73,6 +73,7 @@ class MatchDecision:
 
 
 _NO_RULES = MatchDecision(False, "kural tanımlı değil")
+_NO_RULES_ALLOWED = MatchDecision(True, "kural tanımlı değil; profil kuralsız gönderime izin veriyor")
 _NO_POSITIVE = MatchDecision(False, "hiçbir pozitif kural eşleşmedi")
 
 
@@ -80,18 +81,29 @@ def matches(
     event_type: EventKind,
     product: ProductContext,
     rules: Sequence[Rule] | Iterable[Rule],
+    *,
+    allow_without_rules: bool = False,
 ) -> MatchDecision:
-    """Event bildirilmeli mi? Yan etkisiz."""
+    """Event bildirilmeli mi? Yan etkisiz.
+
+    ``allow_without_rules`` bu event'i kapsayan hiç pozitif kural yokken
+    verilecek kararı belirler. Negatif kurallar her durumda önce uygulanır:
+    takip listesi modelinde ``/mute`` yalnızca susturur, geri kalanı geçer.
+    """
     active = [rule for rule in rules if rule.is_active and rule.covers(event_type)]
     if not active:
-        return _NO_RULES
+        return _NO_RULES_ALLOWED if allow_without_rules else _NO_RULES
 
     for rule in active:
         if rule.kind is RuleKind.NEGATIVE_KEYWORD and _hits(rule, product):
             return MatchDecision(False, f"negatif kural eşleşti: {rule.pattern}", rule.id)
 
-    for rule in active:
-        if rule.kind in POSITIVE_KINDS and _hits(rule, product):
+    positives = [rule for rule in active if rule.kind in POSITIVE_KINDS]
+    if not positives and allow_without_rules:
+        return _NO_RULES_ALLOWED
+
+    for rule in positives:
+        if _hits(rule, product):
             return MatchDecision(True, f"{rule.kind} kuralı eşleşti: {rule.pattern}", rule.id)
 
     return _NO_POSITIVE

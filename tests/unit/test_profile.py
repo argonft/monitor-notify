@@ -27,3 +27,8 @@ def test_acil_turler_duz_metinle_verilebilir():
 def test_bilinmeyen_acil_tur_reddedilir():
     with pytest.raises(ValueError):
         RetailerProfile(name="shop.example", urgent_kinds=frozenset({"campaign"}))
+
+
+def test_kuralsiz_gonderim_varsayilan_kapali():
+    assert RetailerProfile(name="shop.example").notify_without_rules is False
+    assert RetailerProfile(name="shop.example", notify_without_rules=True).notify_without_rules

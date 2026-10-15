@@ -504,3 +504,47 @@ async def test_isaretleme_hatasi_loglanir_ve_yukari_tasinir(caplog):
     with pytest.raises(RuntimeError):
         await dispatcher.run_once()
     assert "işaretlenemedi" in caplog.text
+
+
+# --- kuralsız gönderim (takip listesi modeli) ---------------------------------
+
+WATCHLIST = RetailerProfile(name="shop.example", notify_without_rules=True)
+
+
+def build_watchlist(events, rules=()):
+    catalog = FakeCatalog(list(events))
+    notifier = FakeNotifier()
+    dispatcher = OutboxDispatcher(
+        source=catalog, profile=WATCHLIST, store=FakeRules(rules), notifier=notifier
+    )
+    return dispatcher, catalog, notifier
+
+
+async def test_varsayilan_profilde_kural_yoksa_gonderilmez():
+    dispatcher, catalog, notifier = build([pending(1)], rules=())
+    await dispatcher.run_once()
+    assert notifier.sent == []
+    assert catalog.marked == [1]
+
+
+async def test_takip_listesi_profilinde_kural_yoksa_her_sey_gonderilir():
+    dispatcher, catalog, notifier = build_watchlist([pending(1), pending(2, brand="Adidas")])
+    await dispatcher.run_once()
+    assert len(notifier.sent) == 2
+    assert sorted(catalog.marked) == [1, 2]
+
+
+async def test_takip_listesi_profilinde_mute_yine_susturur():
+    events = [pending(1, name="Spor Çorap"), pending(2)]
+    dispatcher, catalog, notifier = build_watchlist(events, rules=(MUTE_CORAP,))
+    await dispatcher.run_once()
+    assert len(notifier.sent) == 1
+    assert "Air Max" in notifier.sent[0][1]
+
+
+async def test_takip_listesi_profilinde_pozitif_kural_daraltir():
+    events = [pending(1, brand="Nike"), pending(2, brand="Adidas")]
+    dispatcher, catalog, notifier = build_watchlist(events, rules=(NIKE_RULE,))
+    await dispatcher.run_once()
+    assert len(notifier.sent) == 1
+    assert "Nike" in notifier.sent[0][1]

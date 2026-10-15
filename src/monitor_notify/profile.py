@@ -25,6 +25,11 @@ class RetailerProfile:
     #: Anında tek mesaj olarak gidenler; gerisi özette toplanır.
     urgent_kinds: frozenset[EventKind] = DEFAULT_URGENT_KINDS
     button_label: str = DEFAULT_BUTTON_LABEL
+    #: Hiç kural yokken bildirim gönderilsin mi? Bütün kataloğu tarayan retailer
+    #: için kapalı (kurallar opt-in), kullanıcının tek tek takibe aldığı ürünleri
+    #: izleyen retailer için açık. Kural varsa davranış aynıdır: /mute susturur,
+    #: /watch daraltır.
+    notify_without_rules: bool = False
 
     def __post_init__(self) -> None:
         for field_name in ("name", "variant_noun", "button_label"):
