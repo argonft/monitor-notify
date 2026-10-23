@@ -2,7 +2,7 @@
 import monitor_notify
 
 PUBLIC = [
-    "EventKind", "Notification", "EventSource", "RetailerProfile", "NotifyConfig",
+    "EventKind", "Notification", "VariantStock", "EventSource", "RetailerProfile", "NotifyConfig",
     "NotifyApp", "ExtraCommand", "MigrationSource", "NOTIFY_MIGRATIONS",
     "MigrationsMissingError", "migrate", "format_money", "NotifyStore", "contains",
 ]
@@ -15,7 +15,7 @@ def test_genel_api_disa_aktarilir():
 
 
 def test_surum_tanimli():
-    assert monitor_notify.__version__ == "0.2.0"
+    assert monitor_notify.__version__ == "0.3.0"
 
 
 def test_contains_turkce_ve_buyuk_kucuk_harf_duyarsiz():

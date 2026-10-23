@@ -3,18 +3,19 @@ from .app import NotifyApp
 from .bot.extra import ExtraCommand
 from .config import NotifyConfig
 from .formatting.money import format_money
-from .model import EventKind, Notification
+from .model import EventKind, Notification, VariantStock
 from .ports import EventSource
 from .profile import RetailerProfile
 from .rules.normalize import contains
 from .store.migrate import NOTIFY_MIGRATIONS, MigrationSource, MigrationsMissingError, migrate
 from .store.notify_store import NotifyStore
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "EventKind",
     "Notification",
+    "VariantStock",
     "EventSource",
     "RetailerProfile",
     "NotifyConfig",

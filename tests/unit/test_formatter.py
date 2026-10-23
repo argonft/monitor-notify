@@ -9,7 +9,7 @@ import pytest
 
 from monitor_notify.formatting.messages import format_digest, format_urgent
 from monitor_notify.formatting.money import format_money
-from monitor_notify.model import EventKind, Notification
+from monitor_notify.model import EventKind, Notification, VariantStock
 from monitor_notify.profile import RetailerProfile
 
 LIRA_SIGN = "₺"
@@ -33,6 +33,7 @@ def item(
     brand: str | None = "Nike",
     label: str = "42",
     image_url: str | None = None,
+    variants: tuple[VariantStock, ...] = (),
 ) -> Notification:
     return Notification(
         id=1,
@@ -49,6 +50,7 @@ def item(
         new_stock=new_stock,
         old_price=Decimal(old_price) if old_price else None,
         new_price=Decimal(new_price) if new_price else None,
+        variants=variants,
     )
 
 
@@ -252,3 +254,34 @@ def test_buton_etiketi_profilden_gelir():
 
 def test_buton_urun_urline_gider():
     assert urgent(item()).button_url == "https://shop.example/air-max-plus-vii-white-black-hq2197-100"
+
+
+# --- varyant listesi (yeni ürün) -------------------------------------------
+
+SIZES = (VariantStock("40", 2), VariantStock("41", 0), VariantStock("42", 5))
+
+
+def test_yeni_urun_mesaji_tum_bedenleri_ve_stoklari_gosterir():
+    text = urgent(item(EventKind.NEW_PRODUCT, label="40", new_stock=2, variants=SIZES)).text
+
+    assert "40: 2 · 41: 0 · 42: 5" in text
+    assert "toplam stok: 7" in text
+
+
+def test_yeni_urun_mesajinda_tek_beden_satiri_kalmaz():
+    text = urgent(item(EventKind.NEW_PRODUCT, label="40", new_stock=2, variants=SIZES)).text
+    assert "Beden 40 — stok: 2" not in text
+
+
+def test_varyant_listesi_yoksa_eski_detay_satiri_korunur():
+    text = urgent(item(EventKind.NEW_PRODUCT, label="40", new_stock=2)).text
+    assert "Beden 40 — stok: 2" in text
+
+
+def test_ozette_yeni_urun_tum_bedenleri_ve_stoklari_gosterir():
+    digest = format_digest(
+        [item(EventKind.NEW_PRODUCT, label="40", new_stock=2, variants=SIZES)]
+    ).text
+
+    assert "40: 2 · 41: 0 · 42: 5" in digest
+    assert "[40]" not in digest

@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from monitor_notify.model import EventKind, Notification
+from monitor_notify.model import EventKind, Notification, VariantStock
 
 
 def note(**overrides) -> Notification:
@@ -84,3 +84,25 @@ def test_indirim_yoksa_oran_none(sell, discount):
 def test_model_degistirilemez():
     with pytest.raises(AttributeError):
         note().product_name = "x"  # type: ignore[misc]
+
+
+# --- varyant listesi --------------------------------------------------------
+
+
+def test_varyant_listesi_varsayilan_bos():
+    assert note().variants == ()
+
+
+def test_varyant_listesi_tuplea_cevrilir():
+    item = note(variants=[VariantStock("42", 3), VariantStock("43", 0)])
+    assert item.variants == (VariantStock("42", 3), VariantStock("43", 0))
+
+
+def test_varyant_listesi_toplam_stok():
+    item = note(variants=(VariantStock("42", 3), VariantStock("43", 2)))
+    assert item.total_stock == 5
+
+
+def test_negatif_varyant_stogu_reddedilir():
+    with pytest.raises(ValueError):
+        VariantStock("42", -1)

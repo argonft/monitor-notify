@@ -29,6 +29,18 @@ class EventKind(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class VariantStock:
+    """Bir varyantın etiketi ve stoğu; ürün düzeyindeki bildirimde listelenir."""
+
+    label: str
+    stock: int
+
+    def __post_init__(self) -> None:
+        if self.stock < 0:
+            raise ValueError(f"Varyant stoğu negatif olamaz: {self.label!r}={self.stock}")
+
+
+@dataclass(frozen=True, slots=True)
 class Notification:
     """Gönderime aday tek bir değişiklik ve mesaj için gereken ürün bilgisi."""
 
@@ -46,10 +58,14 @@ class Notification:
     new_stock: int | None = None
     old_price: Decimal | None = None
     new_price: Decimal | None = None
+    #: Ürünün bütün varyantları. Doluysa mesaj tek varyant yerine bu listeyi
+    #: gösterir; ürün başına tek gelen ``new_product`` bildirimi için kullanılır.
+    variants: tuple[VariantStock, ...] = ()
 
     def __post_init__(self) -> None:
         # DB'den gelen düz metin kabul edilir; bilinmeyen değer ValueError verir.
         object.__setattr__(self, "kind", EventKind(self.kind))
+        object.__setattr__(self, "variants", tuple(self.variants))
         if not self.product_name.strip():
             raise ValueError("product_name boş olamaz.")
         if not self.product_url.startswith("https://"):
@@ -60,6 +76,11 @@ class Notification:
     @property
     def title(self) -> str:
         return f"{self.brand} · {self.product_name}" if self.brand else self.product_name
+
+    @property
+    def total_stock(self) -> int:
+        """Varyant listesinin toplam stoğu."""
+        return sum(variant.stock for variant in self.variants)
 
     @property
     def display_url(self) -> str:

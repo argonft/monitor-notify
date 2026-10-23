@@ -104,6 +104,8 @@ def format_digest(
 
 
 def _detail_line(item: Notification, profile: RetailerProfile) -> str:
+    if item.variants:
+        return f"{profile.variant_noun} — toplam stok: {item.total_stock}\n{_variant_list(item)}"
     variant = f"{profile.variant_noun} {item.variant_label}" if item.variant_label else "Varyant"
     if item.kind in _STOCK_KINDS:
         return f"{variant} — stok: {item.old_stock} → {item.new_stock}"
@@ -125,7 +127,14 @@ def _price_line(item: Notification) -> str:
     return f"{format_money(current)}  (liste {format_money(item.sell_price)}, %{ratio} indirim)"
 
 
+def _variant_list(item: Notification) -> str:
+    return " · ".join(f"{variant.label}: {variant.stock}" for variant in item.variants)
+
+
 def _digest_line(item: Notification) -> str:
+    if item.variants:
+        price = format_money(item.discount_price or item.sell_price)
+        return f"• {item.title} {price}\n  {_variant_list(item)}\n  {item.display_url}"
     label = item.variant_label or "-"
     if item.kind in _STOCK_KINDS:
         change = f"{item.old_stock}→{item.new_stock}"
